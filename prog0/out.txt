@@ -1,0 +1,21 @@
+./exec
+Thread 1296 - value 0
+Thread 1552 - value 10
+Thread 1296 - value 1
+Thread 1552 - value 11
+Thread 1296 - value 2
+Thread 1552 - value 12
+Thread 1296 - value 3
+Thread 1552 - value 13
+Thread 1296 - value 4
+Thread 1552 - value 14
+Thread 1296 - value 5
+Thread 1552 - value 15
+Thread 1296 - value 6
+Thread 1552 - value 16
+Thread 1296 - value 7
+Thread 1552 - value 17
+Thread 1296 - value 8
+Thread 1552 - value 18
+Thread 1296 - value 9
+Thread 1552 - value 19
