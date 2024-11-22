@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": "c:/Users/jorge/Documents/GithubPessoal/operatingSystems1",
-      "program": "c:/Users/jorge/Documents/GithubPessoal/operatingSystems1/build/Debug/outDebug",
+      "cwd": "c:/Users/jorge/Documents/GithubPessoal/operatingSystems1/pthread0",
+      "program": "c:/Users/jorge/Documents/GithubPessoal/operatingSystems1/pthread0/build/Debug/outDebug",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [
