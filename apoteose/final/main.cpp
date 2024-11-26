@@ -22,7 +22,7 @@ vector<string> NAMES = {
   "Erick", "Júlia", "Vitória", "Letícia", "Lele", "Pepe", "Mercedes", "Mariana", "Marina",
   "Machado", "José", "Zé", "Steven", "Finn", "Erika", "Arlindo", "Péricles", "Chico", "Francisco",
   "Rita", "Pedro", "Pedrinho", "Laiane", "Thais", "Ariane", "Ariana", "Lula", "Franklina", "Eduardo",
-  "Duda", "Anitta", "Maria", "Madu", "Dado", "Pablo"
+  "Duda", "Anitta", "Maria", "Madu", "Dado", "Pablo", "Guilherme", "Yuri"
 };
 
 vector<string> SURNAMES = {
@@ -31,6 +31,8 @@ vector<string> SURNAMES = {
   "Lacerda", "Bardo", "Botelho", "Salhani", "Saffi", "Borges", "Brito", "Pinto", "Tadeu", "Cruz",
   "Vittar"
 };
+
+int MAX_WAIT_TIME = 10;
 
 struct Person {
     string name;
@@ -50,12 +52,14 @@ mutex persons_mutex;                         // Mutex for thread-safe access
 condition_variable cv_producer, cv_consumer; // Condition variables for producer and consumer
 atomic<bool> running(true);                  // Flag to keep threads running
 
+float game_score = 0.0;
+
 // Function to generate a new person
 Person generatePerson(int id) {
     return Person{
       NAMES[rand() % NAMES.size()],
       SURNAMES[rand() % SURNAMES.size()],
-      rand() % 5 + 1
+      rand() % MAX_WAIT_TIME + 1
     }; // Random wait time between 1 and 5
 }
 
@@ -94,11 +98,13 @@ void setCursorPosition(int x, int y) {
     cout << "\033[" << x << ";" << y << "H";  // Move cursor to (x, y)
 }
 
-string handleInput() {
-    setCursorPosition(1, 1);  // Move to line 1, column 1 (first line)
+string handleInput(string message) {
+    int inputPosLine = 1;
+    int inputPosCol = 1;
+    setCursorPosition(inputPosLine, inputPosCol);  // Move to line 1, column 1 (first line)
     cout << string(80, ' ');
-    setCursorPosition(1, 1);
-    cout << "Enter command: " ;
+    setCursorPosition(inputPosLine, inputPosCol);
+    cout << message ;
     // You can add logic for handling input here if needed
     // For now, it will just ask for a command
     string input;
@@ -107,7 +113,9 @@ string handleInput() {
 }
 
 void printPersons(const vector<Person> persons) {
-    setCursorPosition(4, 1);  // Move to line 3, column 1 (third line)
+    int personsPosLine = 4;
+    int personsPosCol = 1;
+    setCursorPosition(personsPosLine, personsPosCol);  // Move to line 3, column 1 (third line)
 
     // Print header
     cout << left << setw(setWval) << "Name" 
@@ -128,10 +136,17 @@ void printPersons(const vector<Person> persons) {
 }
 
 void printTimer(long int seconds) {
-    setCursorPosition(3, 1);  // Move to line 2, column 1 (second line)
+    int timerPosLine = 3;
+    int timerPosCol = 1;
+    setCursorPosition(timerPosLine, timerPosCol);
+    cout << "Timer: " << setw(timerPosLine) << seconds << "s";
+}
 
-    // Print the timer with fixed formatting
-    cout << "Timer: " << setw(3) << seconds << "s";
+void printScore(float score) {
+    int scorePosLine = 3;
+    int scorePosCol = 15;
+    setCursorPosition(scorePosLine, scorePosCol);  
+    cout << "Score: " << setw(scorePosCol) << score;
 }
 
 void CheckElapsedTime(vector<Person> persons) {
@@ -147,6 +162,7 @@ void CheckElapsedTime(vector<Person> persons) {
   }
 
   auto elapsed = duration_cast<seconds>(steady_clock::now() - start_time).count();
+  printScore(game_score);
   printTimer(elapsed);
   printPersons(persons);
 }
@@ -162,14 +178,17 @@ void consumer() {
         if (!running) break; // Exit loop if the program is stopping
 
         CheckElapsedTime(persons);
-        string input = handleInput();
+        string input = handleInput("Atender pessoa: ");
 
         // Remove the first person from the vector
         auto it = find_if(persons.begin(), persons.end(), [&](const Person& person) {
             return person.name == input;
         });
 
-        if (it != persons.end()) persons.erase(it);
+        if (it != persons.end()) {
+            game_score = game_score + input.size() + (it.base()->wait_time - it.base()->elapsed_time - 1);
+            persons.erase(it);
+        }
 
         // cout << "[Consumer] Removed: " << p.name
         //      << " (Wait Time: " << p.wait_time << ")\n";
@@ -178,7 +197,223 @@ void consumer() {
         cv_producer.notify_one();
 
         // Simulate consumption delay
-        this_thread::sleep_for(chrono::milliseconds(500));
+        this_thread::sleep_for(milliseconds(500));
+    }
+}
+
+void displayBanner() {
+    int bannerPosLine = 2;
+    int bannerPosCol = 1;
+    setCursorPosition(bannerPosLine, bannerPosCol);  
+    cout << R"(
+            ________   ______                          
+           / ____/ /  / ____/___ _______________  ____ 
+          / __/ / /  / / __/ __ `/ ___/ ___/ __ \/ __ \
+         / /___/ /  / /_/ / /_/ / /  / /__/ /_/ / / / /
+        /_____/_/   \____/\__,_/_/  s\___/\____/_/ /_/                     
+   )" << endl;
+
+    cout << R"(
+                        (\     .-. 
+                         )\   (o.o) 
+                        (__) (   )o
+                           '---'-" 
+                           
+                Seja bem-vinda ao nosso bistrô!
+                Ficaremos felizes em serví-la!
+
+   )" << endl;
+}
+
+
+void printGreeting() {
+    displayBanner();
+    cout << R"(
+    ╔═════════════════╗
+    ║       MENU      ║
+    ╟─────────────────╢
+    ║ 1. Começar!     ║
+    ║ 2. Regras       ║
+    ║ 3. Dificuldade  ║
+    ║ 4. Sobre        ║
+    ╚═════════════════╝
+   )" << endl;
+}
+
+void displayMenu(int selectedOption) {
+    system("clear"); // Clear the terminal
+    displayBanner();
+
+    cout << "\n    ╔═════════════════╗" << endl;
+    cout << "    ║       MENU      ║" << endl;
+    cout << "    ╟─────────────────╢" << endl;
+    cout << "    ║ ";
+    if (selectedOption == 1) cout << "\033[1m1. Começar!\033[0m     ║" << endl; // Bold
+    else cout << "1. Começar!     ║" << endl;
+
+    cout << "    ║ ";
+    if (selectedOption == 2) cout << "\033[1m2. Regras\033[0m       ║" << endl; // Bold
+    else cout << "2. Regras       ║" << endl;
+
+    cout << "    ║ ";
+    if (selectedOption == 3) cout << "\033[1m3. Dificuldade\033[0m  ║" << endl; // Bold
+    else cout << "3. Dificuldade  ║" << endl;
+
+    cout << "    ║ ";
+    if (selectedOption == 4) cout << "\033[1m4. Sobre\033[0m        ║" << endl; // Bold
+    else cout << "4. Sobre        ║" << endl;
+
+    cout << "    ╚═════════════════╝" << endl;
+}
+
+void backToMainMenu(string msg) {
+    handleInput(msg);
+}
+
+void displayRules() {
+    system("clear");
+    displayBanner();
+    cout << R"(
+        REGRAS
+        ------------------------------------------------------------------
+        O sistema chama-garçom quebrou e você deve informar
+        manualmente o nome das pessoas para serem atendidas
+        a cada momento
+
+        A cada instante você deverá digitar no campo
+        Atender pessoa: _______
+
+        o nome de uma das pessoas listadas 
+        Atender pessoa: Pepe
+
+        Timer:   9s                  Score:                              0
+        Name           Surname        Wait Time      Elapsed Time
+        -----------------------------------------------------------------
+        Steven         Vittar         10             0
+        Anitta         Steven         4              0
+        Erick          Vitória        3              0
+        Pepe           Vittar         2              0
+        Steven         Oliveira       9              0
+        Gabriela       Steven         2              0
+        Franklina      Cruz           5              0
+        Lele           Tadeu          8              0
+        Anitta         Botelho        4              0
+        Maristela      Lula           5              0
+
+        Sua meta é obter a maior pontuação possível:
+        
+        - sn: tamanho do nome digitado
+        - tw: tempo de espera que cada cliente está disposta 
+              a esperar sem sofrer
+        - ts: tempo decorrido desde a chegada da cliente
+
+        * score = ca.sn - cb.|ts - tw|
+
+        DIFICULDADE
+        -----------------------------------------------------------
+        Lembrando que 
+        [1] Nomes simples 
+        - sn = NOME                         |  ca = 1  |  cb = 1  |
+        
+        [2] Nomes compostos 
+        - sn = NOME + SOBRENOME             | ca = 1.2 | cb = 0.8 |
+
+        [3] Nomes compostos com 
+           mensagem personalizada
+        - sn = NOME + SOBRENOME + MENSAGEM  | ca = 1.5 | cb = 0.5 | 
+
+
+        Voltar ao menu inicial... [qualquer tecla]
+    )" << endl;
+        
+    backToMainMenu("");
+}
+
+void displayDificulties() {
+    system("clear");
+    displayBanner();
+        cout << R"(
+        REGRAS
+        -----------------------------------------------------------
+        Sua meta é obter a maior pontuação possível:
+        
+        - sn: tamanho do nome digitado
+        - tw: tempo de espera que cada cliente está disposta 
+              a esperar sem sofrer
+        - ts: tempo decorrido desde a chegada da cliente
+
+        * score = ca.sn - cb.|ts - tw|
+
+        DIFICULDADE
+        -----------------------------------------------------------
+        Lembrando que 
+        [1] Nomes simples 
+        - sn = NOME                         |  ca = 1  |  cb = 1  |
+        
+        [2] Nomes compostos 
+        - sn = NOME + SOBRENOME             | ca = 1.2 | cb = 0.8 |
+
+        [3] Nomes compostos com 
+           mensagem personalizada
+        - sn = NOME + SOBRENOME + MENSAGEM  | ca = 1.5 | cb = 0.5 | 
+
+    )" << endl;
+    backToMainMenu("Voltar ao menu inicial... [qualquer tecla] ");
+}
+
+void displayAbout() {
+    system("clear");
+    displayBanner();
+    
+    auto elapsed = duration_cast<seconds>(steady_clock::now() - start_time).count();
+    cout << R"(
+        ----------------------------------------------------------------
+        Bom dia!! Você acordou no corpo de Milton, uma baratinha garçom!
+
+        Você poderia ter acordado em um dia de folga de Milton, mas isso 
+        somente aconteceria com uma chance de ~0.1667%, devido à escala
+        excessiva de trabalho no universo das baratinhas
+
+        Uma das suas amigas está lutando muito para que seus dias de 
+        descanso possam ser mais dignos, mas enquanto isso, precisamos 
+        atender nossas clientes
+        ----------------------------------------------------------------
+
+        A população de baratinhas é grande e seu bistrô é excepcional, 
+        mas sua sorte não está boa e o sistema chama-garçom automático 
+        quebrou. Sua tarefa é informar manualmente o nome da cliente a
+        ser atendida. A cada segundo uma nova cliente aparece. Neste 
+        instante já se passaram
+        )";
+        
+    cout << elapsed << R"( segundos, e uma multidão se aperta para saborear todas as
+        delícias do bistrô. Não fique parada!
+        ----------------------------------------------------------------
+        )" << endl;
+    backToMainMenu("Voltar ao menu inicial... [qualquer tecla] ");
+}
+
+void menuInteraction() {
+    while (true) {
+        system("clear");
+        printGreeting();
+        string str_input = handleInput("Qual opção? [1|2|3|4] ");
+        int input = stoi(str_input);
+        displayMenu(input);
+        if ((int) input < 0 || (int) input > 4) continue;
+
+        str_input = handleInput("Confirma? [s|n] ");
+        if (str_input != "s") continue;
+
+        if (input == 2) displayRules();
+        if (input == 3) displayDificulties();
+        if (input == 4) displayAbout();
+
+        if (input == 1) {
+            str_input = handleInput("Começar? ");
+            system("clear");
+            break;
+        }
     }
 }
 
@@ -186,13 +421,15 @@ int main() {
     // Seed the random number generator for wait times
     srand(time(0));
     system("clear");
+    printGreeting();
+    menuInteraction();
 
     // Launch producer and consumer threads
     thread producer_thread(producer);
     thread consumer_thread(consumer);
 
     // Let the simulation run for 15 seconds
-    this_thread::sleep_for(chrono::seconds(100));
+    this_thread::sleep_for(seconds(10));
 
     // Signal threads to stop
     running = false;
