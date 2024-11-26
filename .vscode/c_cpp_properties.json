@@ -5,9 +5,9 @@
             "includePath": [
                 "${workspaceFolder}/**"
             ],
-            "compilerPath": "C:/cygwin64/bin/gcc.exe",
+            "compilerPath": "C:/cygwin64/bin/g++.exe",
             "cStandard": "${default}",
-            "cppStandard": "${default}",
+            "cppStandard": "c++20",
             "intelliSenseMode": "windows-gcc-x64",
             "compilerArgs": [
                 ""

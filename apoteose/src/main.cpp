@@ -24,7 +24,8 @@ sem_t population_semaphore;
 
 bool game_running = true;    
 int timestep = 0;            
-int score = 0;               
+int score = 0;
+int game_run_time = 0;
 
 void decrement_dressing_time() {
     lock_guard<mutex> lock(queue_mutex);
@@ -34,13 +35,11 @@ void decrement_dressing_time() {
         Person p = person_queue.front();
         person_queue.pop();
 
-        if (p.dressing_time > 0) {
-            p.dressing_time--;
-        }
+        p.dressing_time++;
         p.work_time--;
 
         if (p.work_time <= -10) {
-            cout << p.name << " ran out of work time and left!\n";
+            cout << p.name << " desistiu de esperar e cancelou sua viagem!\n";
             score += -10;  
             sem_post(&population_semaphore);
         } else if (p.work_time <= -5) {
@@ -73,7 +72,7 @@ void producer() {
 
             Person p;
             p.name = names[rand() % names.size()];
-            p.dressing_time = 4 + rand() % 3; 
+            p.dressing_time = - 4 + rand() % 3; 
             p.travel_time = 2 + rand() % 3;   
             p.work_time = 8 + timestep + rand() % 6;     
 
@@ -82,7 +81,7 @@ void producer() {
         }
 
         cv.notify_one(); 
-        this_thread::sleep_for(chrono::seconds(1)); 
+        this_thread::sleep_for(chrono::seconds(5)); 
     }
 }
 
@@ -98,13 +97,18 @@ void consumer() {
 
             if (!game_running) break;
 
-            cout << "\nTempo atual: " << timestep << endl;
-            cout << "Pessoas disponíveis:" << endl;
+            system("clear");
+
+            cout << "\nScore total: " << score << endl
+                 << "Tempo disponível: " << game_run_time - timestep << endl
+                 << "Tempo atual: " << timestep << endl
+                 << "Pessoas disponíveis:" << endl;
+
             queue<Person> temp_queue = person_queue;
             int idx = 1;
             while (!temp_queue.empty()) {
                 Person p = temp_queue.front();
-                cout << idx++ << ". " << p.name
+                cout << "[" << idx++ << "] " << p.name
                      << " (Vestir: " << p.dressing_time 
                      << ", Trajeto: " << p.travel_time
                      << ", Trabalho: " << p.work_time << ")\n";
@@ -131,10 +135,11 @@ void consumer() {
         }
 
         if (person_selected) {
-            while (selected_person.dressing_time > 0) {
-                this_thread::sleep_for(chrono::seconds(1));
+            while (selected_person.dressing_time < 0) {
+                cout << selected_person.name << " está terminando de se vestir...\n";
+                this_thread::sleep_for(chrono::seconds(5));
                 timestep++;
-                selected_person.dressing_time--;
+                selected_person.dressing_time++;
                 selected_person.work_time--;
             }
 
@@ -151,6 +156,9 @@ void consumer() {
 }
 
 int main() {
+    cout << "\nQuanto tempo teremos de corrida? ";
+    cin >> game_run_time;
+
     srand(time(0));
     sem_init(&population_semaphore, 0, 5); 
 
@@ -158,12 +166,12 @@ int main() {
     thread consumer_thread(consumer);
 
     while (game_running) {
-        this_thread::sleep_for(chrono::seconds(1)); 
+        this_thread::sleep_for(chrono::seconds(5)); 
         timestep++;
 
         decrement_dressing_time(); 
 
-        if (timestep >= 30) { 
+        if (timestep >= game_run_time) { 
             game_running = false;
             cv.notify_all();
         }
@@ -174,6 +182,6 @@ int main() {
 
     sem_destroy(&population_semaphore);
 
-    cout << "Game over! Final score: " << score << "\n";
+    cout << "\nFim do jogo! Final score: " << score << "\n";
     return 0;
 }
