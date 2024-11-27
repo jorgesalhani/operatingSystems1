@@ -32,6 +32,41 @@ vector<string> SURNAMES = {
   "Vittar"
 };
 
+vector<string> MSG_PERSONAL = {
+    "Andar com fé eu vou, a fé não costuma falhar.",
+    "A paz invadiu meu coração, como uma surpresa.",
+    "Vamos fugir, pra outro lugar, baby.",
+    "Domingo no parque, o amor está em festa.",
+    "Se eu quiser falar com Deus, preciso me silenciar.",
+    "Expresso 2222, partindo para a liberdade e o sonho.",
+    "Toda menina baiana tem um jeito especial de ser.",
+    "Eu quero ser feliz agora, não depois.",
+    "O verdadeiro amor é vão",
+    "Não chores mais, ouça o canto da salvação.",
+    "Primavera, te amo, meu amor."
+    "Você e eu, eu e você, juntinhos."
+    "Não quero dinheiro, só quero amar."
+    "Sossego, eu quero sossego."
+    "Me dê motivo pra ir embora."
+    "Descobridor dos sete mares, navegar eu quero."
+    "Ela partiu, e nunca mais voltou."
+    "Mas é você que ama o passado e que não vê",
+    "Choram Marias e Clarices no solo do Brasil",
+    "São as águas de março fechando o verão",
+    "O meu peito percebeu que o mar é uma gota",
+    "Eu quero um homem de cor, um Deus negro",
+    "Tudo é perigoso, tudo é divino maravilhoso.",
+    "Enquanto eles se batem, dê um rolê.",
+    "É preciso estar atento e forte.",
+    "Eu não preciso de muito dinheiro, graças a Deus.",
+    "Eu sou, eu sou amor, da cabeça aos pés.",
+    "A noite vai ser longa, o que fazer?",
+    "O sol vai brilhar, mas a chuva já passou.",
+    "Tudo passa, tudo passará, tudo passará.",
+    "Somos feitos da mesma substância, eu e você.",
+    "Amanhã, o dia vai clarear, será diferente."
+};
+
 int MAX_WAIT_TIME = 10;
 
 struct Person {
@@ -39,6 +74,7 @@ struct Person {
     string surname;
     int wait_time;
     long int elapsed_time = 0;
+    string msgPersonal = "";
     int id = 0;
 };
 
@@ -54,12 +90,17 @@ atomic<bool> running(true);                  // Flag to keep threads running
 
 float game_score = 0.0;
 
+int dificult = 1;
+int game_max_time = 100;
+
 // Function to generate a new person
 Person generatePerson(int id) {
     return Person{
       NAMES[rand() % NAMES.size()],
       SURNAMES[rand() % SURNAMES.size()],
-      rand() % MAX_WAIT_TIME + 1
+      rand() % MAX_WAIT_TIME + 1,
+      0,
+      MSG_PERSONAL[rand() % MSG_PERSONAL.size()],
     }; // Random wait time between 1 and 5
 }
 
@@ -101,12 +142,14 @@ void setCursorPosition(int x, int y) {
 string handleInput(string message) {
     int inputPosLine = 1;
     int inputPosCol = 1;
+
     setCursorPosition(inputPosLine, inputPosCol);  // Move to line 1, column 1 (first line)
+    
     cout << string(80, ' ');
+    
     setCursorPosition(inputPosLine, inputPosCol);
+    
     cout << message ;
-    // You can add logic for handling input here if needed
-    // For now, it will just ask for a command
     string input;
     getline(cin, input);
     return input;
@@ -118,10 +161,10 @@ void printPersons(const vector<Person> persons) {
     setCursorPosition(personsPosLine, personsPosCol);  // Move to line 3, column 1 (third line)
 
     // Print header
-    cout << left << setw(setWval) << "Name" 
-         << setw(setWval) << "Surname" 
-         << setw(setWval) << "Wait Time" 
-         << setw(setWval) << "Elapsed Time" 
+    cout << left << setw(setWval) << "Nome" 
+         << setw(setWval) << "Sobrenome" 
+         << setw(setWval) << "Tempo de espera" 
+         << setw(setWval) << "Tempo decorrido" 
          << endl;
     cout << "-----------------------------------------------------------------" << endl;  // Divider
 
@@ -167,6 +210,36 @@ void CheckElapsedTime(vector<Person> persons) {
   printPersons(persons);
 }
 
+void updateScore(Person p) {
+    float ca, cb;
+
+    string inputed_str = p.name;
+    if (dificult == 1) {
+        ca = 1;
+        cb = 1;
+    } else 
+    if (dificult == 2) {
+        ca = 1.2;
+        cb = 0.8;
+        inputed_str += p.surname;
+    } else {
+        ca = 1.5;
+        cb = 0.5;
+        inputed_str += p.surname + p.msgPersonal;
+    }
+
+    // * score = ca.sn - cb.|ts - tw|
+    game_score = game_score + (ca * inputed_str.size()) - (cb * abs(p.wait_time - p.elapsed_time));
+}
+
+void printMsgPersonal(Person p) {
+    int inputMsgPersonLine = 2;
+    int inputMsgPersonCol = 1;
+
+    setCursorPosition(inputMsgPersonLine, inputMsgPersonCol);
+    cout << p.msgPersonal;
+}
+
 // Consumer function
 void consumer() {
     while (running) {
@@ -178,15 +251,23 @@ void consumer() {
         if (!running) break; // Exit loop if the program is stopping
 
         CheckElapsedTime(persons);
-        string input = handleInput("Atender pessoa: ");
+        string name = handleInput("> Atender pessoa: ");
 
         // Remove the first person from the vector
         auto it = find_if(persons.begin(), persons.end(), [&](const Person& person) {
-            return person.name == input;
+            if (dificult == 1) return person.name == name;
+            return person.name + " " + person.surname == name;
         });
 
+        string msgPersonal = "";
+        if (dificult == 3) {
+            printMsgPersonal(*it);
+            msgPersonal = handleInput("> Mensagem personalizada: ");
+            if (msgPersonal != (*it).msgPersonal) (*it).msgPersonal = "";
+        }
+
         if (it != persons.end()) {
-            game_score = game_score + input.size() + (it.base()->wait_time - it.base()->elapsed_time - 1);
+            updateScore(*it);
             persons.erase(it);
         }
 
@@ -248,19 +329,19 @@ void displayMenu(int selectedOption) {
     cout << "    ║       MENU      ║" << endl;
     cout << "    ╟─────────────────╢" << endl;
     cout << "    ║ ";
-    if (selectedOption == 1) cout << "\033[1m1. Começar!\033[0m     ║" << endl; // Bold
+    if (selectedOption == 1) cout << "\033[1m1. Começar!\033[0m   * ║" << endl; // Bold
     else cout << "1. Começar!     ║" << endl;
 
     cout << "    ║ ";
-    if (selectedOption == 2) cout << "\033[1m2. Regras\033[0m       ║" << endl; // Bold
+    if (selectedOption == 2) cout << "\033[1m2. Regras\033[0m     * ║" << endl; // Bold
     else cout << "2. Regras       ║" << endl;
 
     cout << "    ║ ";
-    if (selectedOption == 3) cout << "\033[1m3. Dificuldade\033[0m  ║" << endl; // Bold
+    if (selectedOption == 3) cout << "\033[1m3. Dificuldade\033[0m* ║" << endl; // Bold
     else cout << "3. Dificuldade  ║" << endl;
 
     cout << "    ║ ";
-    if (selectedOption == 4) cout << "\033[1m4. Sobre\033[0m        ║" << endl; // Bold
+    if (selectedOption == 4) cout << "\033[1m4. Sobre\033[0m      * ║" << endl; // Bold
     else cout << "4. Sobre        ║" << endl;
 
     cout << "    ╚═════════════════╝" << endl;
@@ -276,17 +357,18 @@ void displayRules() {
     cout << R"(
         REGRAS
         ------------------------------------------------------------------
-        O sistema chama-garçom quebrou e você deve informar
-        manualmente o nome das pessoas para serem atendidas
-        a cada momento
+        O sistema chama-garçom quebrou e você deve informar manualmente o 
+        nome das pessoas para serem atendidas a cada momento
 
         A cada instante você deverá digitar no campo
-        Atender pessoa: _______
+        
+        > Atender pessoa: _______
 
-        o nome de uma das pessoas listadas 
-        Atender pessoa: Pepe
+        o nome de uma das pessoas listadas. Por exemplo
 
-        Timer:   9s                  Score:                              0
+        > Atender pessoa: Pepe
+
+        Timer:   9s                  Score: 0
         Name           Surname        Wait Time      Elapsed Time
         -----------------------------------------------------------------
         Steven         Vittar         10             0
@@ -300,18 +382,21 @@ void displayRules() {
         Anitta         Botelho        4              0
         Maristela      Lula           5              0
 
-        Sua meta é obter a maior pontuação possível:
+        Sua meta é obter a maior pontuação possível. Calculamos abaixo:
         
+        * score = ca.sn - cb.|ts - tw|
+
+        Onde as variáveis representam:
+
         - sn: tamanho do nome digitado
         - tw: tempo de espera que cada cliente está disposta 
               a esperar sem sofrer
         - ts: tempo decorrido desde a chegada da cliente
 
-        * score = ca.sn - cb.|ts - tw|
-
         DIFICULDADE
         -----------------------------------------------------------
         Lembrando que 
+
         [1] Nomes simples 
         - sn = NOME                         |  ca = 1  |  cb = 1  |
         
@@ -358,7 +443,11 @@ void displayDificulties() {
         - sn = NOME + SOBRENOME + MENSAGEM  | ca = 1.5 | cb = 0.5 | 
 
     )" << endl;
-    backToMainMenu("Voltar ao menu inicial... [qualquer tecla] ");
+
+    string str_dificult = handleInput("Mudar dificuldade? [1|2|3] ");
+    dificult = stoi(str_dificult);
+    dificult = dificult <= 1 ? 1 : dificult >= 3 ? 3 : 2;
+
 }
 
 void displayAbout() {
@@ -378,18 +467,19 @@ void displayAbout() {
         descanso possam ser mais dignos, mas enquanto isso, precisamos 
         atender nossas clientes
         ----------------------------------------------------------------
-
         A população de baratinhas é grande e seu bistrô é excepcional, 
         mas sua sorte não está boa e o sistema chama-garçom automático 
         quebrou. Sua tarefa é informar manualmente o nome da cliente a
-        ser atendida. A cada segundo uma nova cliente aparece. Neste 
-        instante já se passaram
-        )";
+        ser atendida. A cada segundo uma nova cliente aparece. )" << endl;
         
-    cout << elapsed << R"( segundos, e uma multidão se aperta para saborear todas as
+    cout << "\n        Neste instante já se passaram " << elapsed << " segundos" << endl;
+    
+    cout << R"(
+        Uma verdadeira multidão se aperta para saborear todas as 
         delícias do bistrô. Não fique parada!
         ----------------------------------------------------------------
         )" << endl;
+        
     backToMainMenu("Voltar ao menu inicial... [qualquer tecla] ");
 }
 
@@ -410,6 +500,8 @@ void menuInteraction() {
         if (input == 4) displayAbout();
 
         if (input == 1) {
+            string str_game_max_time = handleInput("Duração do jogo? (segundos) ");
+            game_max_time = stoi(str_game_max_time);
             str_input = handleInput("Começar? ");
             system("clear");
             break;
@@ -429,7 +521,7 @@ int main() {
     thread consumer_thread(consumer);
 
     // Let the simulation run for 15 seconds
-    this_thread::sleep_for(seconds(10));
+    this_thread::sleep_for(seconds(game_max_time));
 
     // Signal threads to stop
     running = false;
