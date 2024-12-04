@@ -190,7 +190,7 @@ void producer() {
             PERSONS.push_back(new_person);
         }
 
-        if (PERSONS.size() >= 5) 
+        if (PERSONS.size() >= 8) 
           this_thread::sleep_for(seconds(1));
 
         /**
