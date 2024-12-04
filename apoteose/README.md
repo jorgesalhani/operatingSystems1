@@ -16,7 +16,88 @@ Neste jogo, o thread "Produtor" continuamente adiciona novas pessoas à fila e �
 ### Organização (foco em threads)
 Nesta seção explicamos o código desenvolvido, com ênfase às partes relacionadas ao uso de threads
 
---- TODO ---
+```cpp
+int MAX_PERSONS = 20;
+float GAME_TOTAL_SCORE = 0.0;
+int GAME_TOTAL_CORRECT_PERSON = 0;
+auto GAME_INIT_TIME = steady_clock::now();
+map<string, time_point<steady_clock>> START_TIMES;
+vector<Person> PERSONS;
+```
+
+```cpp
+mutex PERSONS_MUTEX;
+mutex TIME_MUTEX;
+mutex SCORE_MUTEX;
+```
+
+```cpp
+condition_variable 
+    CONDITIONAL_VAR_PRODUCER,
+    CONDITIONAL_VAR_CONSUMER;
+```
+
+```cpp
+atomic<bool> IS_RUNNING(true);
+```
+
+```cpp
+int main() {
+    thread producer_thread(producer);
+    thread consumer_thread(consumer);
+    this_thread::sleep_for(seconds(GAME_MAX_TIME));
+    IS_RUNNING = false;
+    CONDITIONAL_VAR_PRODUCER.notify_all();
+    CONDITIONAL_VAR_CONSUMER.notify_all(); 
+    producer_thread.join();
+    consumer_thread.join();
+    return 0;
+}
+```
+
+```cpp
+void consumer() {
+    while (IS_RUNNING) {
+        unique_lock<mutex> lock_persons(PERSONS_MUTEX);
+        CONDITIONAL_VAR_CONSUMER.wait(lock_persons, []() { return !PERSONS.empty(); });
+        if (!IS_RUNNING) break;
+        {
+            unique_lock<mutex> lock_time(TIME_MUTEX);
+            CheckElapsedTime();
+        }
+        {
+            unique_lock<mutex> lock_score(SCORE_MUTEX);
+            updateScore(*it);
+            PERSONS.erase(it);
+            GAME_TOTAL_CORRECT_PERSON++;
+        }
+        CONDITIONAL_VAR_PRODUCER.notify_one();
+        this_thread::sleep_for(milliseconds(500));
+    }
+}
+```
+
+```cpp
+void producer() {
+    int person_id = 1;
+    while (IS_RUNNING) {
+        unique_lock<mutex> lock_persons(PERSONS_MUTEX);
+        CONDITIONAL_VAR_PRODUCER.wait(lock_persons, []() { return (int) PERSONS.size() < MAX_PERSONS; });
+        if (!IS_RUNNING) break;
+        Person new_person = generatePerson(person_id++);
+        {
+            unique_lock<mutex> lock_time(TIME_MUTEX);
+            START_TIMES[new_person.name] = steady_clock::now();
+
+            PERSONS.push_back(new_person);
+        }
+        if (PERSONS.size() >= 5) 
+          this_thread::sleep_for(seconds(1));
+        CONDITIONAL_VAR_CONSUMER.notify_one();
+
+    }
+}
+```
 
 ### Como jogar
 Abaixo explicamos como pode ser feita a execução do código e instruções de como jogar
